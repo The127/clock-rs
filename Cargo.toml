@@ -1,0 +1,14 @@
+[package]
+name = "clock-rs"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+test-utils = ["dep:parking_lot"]
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+parking_lot = { version = "0.12", optional = true }
+
+[dev-dependencies]
+parking_lot = "0.12"
