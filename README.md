@@ -1,30 +1,15 @@
 # clock-rs
 
-A minimal, testable `Clock` abstraction for Rust, backed by `chrono`.
+A minimal `Clock` abstraction for Rust, backed by `chrono`.
 
-## Motivation
+## Why
 
-Production code that calls `Utc::now()` directly is hard to test deterministically. Time-dependent
-logic — expiry checks, scheduling, audit timestamps — becomes non-reproducible and flaky when the
-clock is a global singleton.
+Calling `Utc::now()` directly makes time-dependent logic — expiry checks, scheduling, audit
+timestamps — impossible to test deterministically. This crate gives you a `Clock` trait with two
+implementations: `SystemClock` for production, and `FakeClock` for tests. Inject `Arc<dyn Clock>`,
+swap the implementation at the boundary, done.
 
-`clock-rs` solves this with a single trait and two implementations:
-
-- **`SystemClock`** delegates to the real wall clock and is used in production.
-- **`FakeClock`** (feature-gated) holds a controllable, in-memory timestamp for use in tests.
-
-Inject `Arc<dyn Clock>` into your types. In production wire up `SystemClock`; in tests hand in a
-`FakeClock` and advance it however you need. No mocking framework required, no `#[cfg(test)]`
-scattered through your business logic.
-
-## Features
-
-- Zero-overhead `Clock` trait (`Send + Sync`) — one method, `now() -> DateTime<Utc>`
-- `SystemClock` — thin wrapper around `Utc::now()`
-- `FakeClock` — deterministic fake with `set_now` and `advance`, protected by a `parking_lot`
-  read-write lock so it is safe to share across threads
-- `FakeClock` is compiled only when the `test-utils` feature is enabled — zero production overhead
-- Minimal dependencies: only `chrono` in the default build; `parking_lot` is opt-in
+No mocking framework. No `#[cfg(test)]` leaking into business logic.
 
 ## Installation
 
@@ -36,14 +21,12 @@ clock-rs = "0.1"
 clock-rs = { version = "0.1", features = ["test-utils"] }
 ```
 
-Enable `test-utils` only under `[dev-dependencies]` so `FakeClock` and its `parking_lot` dependency
-never appear in your production binary.
+`FakeClock` lives behind the `test-utils` feature so it — and its `parking_lot` dependency — never
+end up in your production binary.
 
 ## Usage
 
-### Production code
-
-Accept `Arc<dyn Clock>` so the dependency can be swapped at the call site:
+Accept `Arc<dyn Clock>` in your types:
 
 ```rust
 use clock_rs::{Clock, SystemClock};
@@ -73,9 +56,7 @@ fn main() {
 }
 ```
 
-### Controlling time in tests
-
-Use `FakeClock` to pin the clock to a known instant and advance it programmatically:
+In tests, hand in a `FakeClock` and advance it however you need:
 
 ```rust
 #[cfg(test)]
@@ -110,7 +91,7 @@ mod tests {
         let validator = TokenValidator::new(clock.clone(), t(1));
 
         // act
-        clock.advance(chrono::Duration::hours(2)); // jump past expiry
+        clock.advance(chrono::Duration::hours(2));
         let valid = validator.is_valid();
 
         // assert
@@ -119,36 +100,23 @@ mod tests {
 }
 ```
 
-`FakeClock::advance` is safe to call concurrently — the inner timestamp is guarded by a
-`parking_lot::RwLock`.
-
-### Setting an absolute time
-
-```rust
-use clock_rs::test_utils::FakeClock;
-use chrono::{TimeZone, Utc};
-
-let clock = FakeClock::new(Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap());
-clock.set_now(Utc.with_ymd_and_hms(2025, 6, 15, 12, 0, 0).unwrap());
-assert_eq!(clock.now().year(), 2025);
-```
+`FakeClock::advance` and `FakeClock::set_now` are both safe to call concurrently — the inner
+timestamp is guarded by a `parking_lot::RwLock`.
 
 ## Design notes
 
-**Why a trait instead of a type alias or generic parameter?**
-A trait object (`Arc<dyn Clock>`) keeps the concrete implementation out of struct signatures and
-avoids monomorphising every type that touches the clock. It also makes the injection point
-explicit — a clear seam for testing.
+**Why a trait object instead of a generic?**
+`Arc<dyn Clock>` keeps the concrete type out of struct signatures and avoids monomorphising every
+type that touches a clock. The injection point stays explicit and the seam for testing is obvious.
 
 **Why feature-gate `FakeClock`?**
-`FakeClock` pulls in `parking_lot`. Gating it behind `test-utils` keeps the default dependency
-graph lean and signals that this type is not for production use. Crates that want it opt in
-deliberately, typically only under `[dev-dependencies]`.
+It pulls in `parking_lot`. Gating it behind `test-utils` keeps the default dependency graph lean
+and makes it clear this type isn't for production. Crates opt in deliberately, usually only under
+`[dev-dependencies]`.
 
-**Why `parking_lot::RwLock` instead of `std::sync::RwLock`?**
-`parking_lot`'s implementation is faster on uncontended paths, does not poison on panic, and has a
-smaller memory footprint — all desirable properties for a clock used in a test harness that may
-spawn many threads.
+**Why `parking_lot::RwLock` over `std::sync::RwLock`?**
+Faster on uncontended paths, no poisoning on panic, smaller footprint. All reasonable properties
+for a lock that mostly exists to make test infrastructure thread-safe.
 
 ## License
 
