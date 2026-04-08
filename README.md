@@ -15,10 +15,10 @@ No mocking framework. No `#[cfg(test)]` leaking into business logic.
 
 ```toml
 [dependencies]
-clock-rs = "0.1"
+raccoon-clock-rs = "0.1"
 
 [dev-dependencies]
-clock-rs = { version = "0.1", features = ["test-utils"] }
+raccoon-clock-rs = { version = "0.1", features = ["test-utils"] }
 ```
 
 `FakeClock` lives behind the `test-utils` feature so it — and its `parking_lot` dependency — never
