@@ -1,6 +1,6 @@
 [package]
 name = "raccoon-clock-rs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Clock trait abstraction over DateTime<Utc> with a SystemClock for production and a FakeClock for tests"
 license = "MIT"
