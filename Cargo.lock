@@ -57,14 +57,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clock-rs"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "parking_lot",
-]
-
-[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -185,6 +177,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41f2619966050689382d2b44f664f4bc593e129785a36d6ee376ddf37259b924"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "raccoon-clock-rs"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "parking_lot",
 ]
 
 [[package]]
